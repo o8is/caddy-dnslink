@@ -1,0 +1,16 @@
+{
+	order dnslink before reverse_proxy
+}
+
+:80 {
+	# This is a generic example configuration.
+	# You should override this Caddyfile with your own configuration.
+	
+	# dnslink {
+	# 	proxies {
+	# 		/ipfs localhost:8080
+	# 	}
+	# }
+
+	respond "Caddy DNSLink Module Installed" 200
+}
