@@ -164,6 +164,7 @@ func (d *DNSLink) resolve(host string) (string, string, error) {
 	for ns, entries := range result.Links {
 		if len(entries) > 0 {
 			namespace = ns
+			// TODO: Should we find the first entry that matches one of the configured prefixes?
 			identifier = entries[0].Identifier
 			break
 		}
