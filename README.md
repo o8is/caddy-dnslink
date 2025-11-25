@@ -86,8 +86,9 @@ docker build -t caddy-dnslink .
     dnslink {
         proxies {
             # prefix [replacement] upstream
-            /swarm /bzz varnish:8080
-            /ipfs       ipfs:8080
+            /swarm   /bzz varnish:8080
+            /arweave /    ar:4000
+            /ipfs         ipfs:8080
         }
         cache_ttl 5m
     }
@@ -101,10 +102,12 @@ docker build -t caddy-dnslink .
     "handler": "dnslink",
     "upstreams": {
         "/swarm": "varnish:8080",
+        "/arweave": "ar:4000",
         "/ipfs": "ipfs:8080"
     },
     "replacements": {
-        "/swarm": "/bzz"
+        "/swarm": "/bzz",
+        "/arweave": "/"
     },
     "cache_ttl": 300000000000
 }
