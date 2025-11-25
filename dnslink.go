@@ -25,7 +25,7 @@ type DNSLink struct {
 	// Upstreams maps a prefix (e.g. "/swarm") to a reverse proxy upstream (e.g. "varnish:8080").
 	Upstreams map[string]string `json:"upstreams,omitempty"`
 
-	// Replacements maps a prefix (e.g. "/swarm") to a replacement string (e.g. "/bzz").
+	// Replacements maps a prefix (e.g. "/swarm") to the actual path prefix (e.g. "/bzz").
 	Replacements map[string]string `json:"replacements,omitempty"`
 
 	// CacheTTL is the duration to cache DNS lookups. Default is 1 minute.
@@ -101,32 +101,8 @@ func (d *DNSLink) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyht
 		// Match found!
 		d.logger.Debug("dnslink match", zap.String("host", host), zap.String("namespace", namespace), zap.String("identifier", identifier))
 
-		// Construct new path
-		// Start with replacement or prefix
-		base := prefix
-		if replacement, ok := d.Replacements[prefix]; ok {
-			base = replacement
-		}
-
-		// Ensure base ends with /
-		if !strings.HasSuffix(base, "/") {
-			base += "/"
-		}
-
-		// Add identifier
-		newPath := base + identifier
-
-		// Ensure identifier part ends with / if it's a directory-like structure
-		if !strings.HasSuffix(newPath, "/") {
-			newPath += "/"
-		}
-
-		// Append original path (stripped of leading /)
-		originalPath := r.URL.Path
-		cleanOriginal := strings.TrimPrefix(originalPath, "/")
-		newPath += cleanOriginal
-
-		r.URL.Path = newPath
+		replacement := d.Replacements[prefix]
+		r.URL.Path = buildPath(namespace, identifier, replacement, r.URL.Path)
 
 		// Delegate to the reverse proxy
 		return proxy.ServeHTTP(w, r, next)
@@ -134,6 +110,35 @@ func (d *DNSLink) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyht
 
 	d.logger.Debug("no matching prefix found", zap.String("host", host), zap.String("namespace", namespace))
 	return next.ServeHTTP(w, r)
+}
+
+// buildPath constructs the rewritten path for proxying.
+// It combines the replacement (or namespace prefix), identifier, and original path.
+func buildPath(namespace, identifier, replacement, originalPath string) string {
+	// Start with replacement or namespace prefix
+	base := "/" + namespace
+	if replacement != "" {
+		base = replacement
+	}
+
+	// Ensure base ends with /
+	if !strings.HasSuffix(base, "/") {
+		base += "/"
+	}
+
+	// Add identifier
+	newPath := base + identifier
+
+	// Ensure identifier part ends with /
+	if !strings.HasSuffix(newPath, "/") {
+		newPath += "/"
+	}
+
+	// Append original path (stripped of leading /)
+	cleanOriginal := strings.TrimPrefix(originalPath, "/")
+	newPath += cleanOriginal
+
+	return newPath
 }
 
 func (d *DNSLink) resolve(host string) (string, string, error) {
